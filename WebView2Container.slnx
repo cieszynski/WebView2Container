@@ -3,5 +3,5 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
-  <Project Path="WebView2Container.vcxproj" />
+  <Project Path="WebView2Container.vcxproj" Id="64265cf6-9e01-4702-a777-2cf6ee62a405" />
 </Solution>
