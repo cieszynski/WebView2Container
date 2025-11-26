@@ -23,8 +23,18 @@
     <ClInclude Include="WebView2Container.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
+    <ClInclude Include="resource.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+    <None Include="html1.htm" />
+    <None Include="html2.htm" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="WebView2Container.rc">
+      <Filter>Ressourcendateien</Filter>
+    </ResourceCompile>
   </ItemGroup>
 </Project>

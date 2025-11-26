@@ -4,7 +4,6 @@
 
 #include "WebView2Container.h"
 
-//static int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine, int nCmdShow)
 int WINAPI WinMain(
 	_In_ HINSTANCE hInstance,
 	_In_opt_ HINSTANCE hPrevInstance,
@@ -14,22 +13,38 @@ int WINAPI WinMain(
 
 {
 	// Register the window class.
-	const wchar_t CLASS_NAME[] = L"Sample Window Class";
+	const wchar_t CLASS_NAME[] = L"Window Class";
 
-	WNDCLASS wc = { };
+	WNDCLASSEXW wcex;
 
-	wc.lpfnWndProc = WindowProc;
-	wc.hInstance = hInstance;
-	wc.lpszClassName = CLASS_NAME;
+	wcex.cbSize = sizeof(WNDCLASSEX);
+	// https://learn.microsoft.com/en-us/windows/win32/winmsg/window-class-styles
+	wcex.style = CS_HREDRAW | CS_VREDRAW;
+	wcex.lpfnWndProc = WindowProc;
+	wcex.cbClsExtra = 0;
+	wcex.cbWndExtra = 0;
+	wcex.hInstance = hInstance;
+	wcex.hIcon = LoadIcon(hInstance, IDI_APPLICATION);
+	wcex.hCursor = LoadCursor(NULL, IDC_ARROW);
+	wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+	wcex.lpszMenuName = NULL;
+	wcex.lpszClassName = CLASS_NAME;
+	wcex.hIconSm = LoadIcon(wcex.hInstance, IDI_APPLICATION);
 
-	RegisterClass(&wc);
+	if (!RegisterClassEx(&wcex))
+	{
+		MessageBox(NULL,
+			L"Call to RegisterClassEx failed!",
+			L"WebView2Container",
+			MB_ICONERROR);
+	}
 
 	// Create the window.
 
-	HWND hwnd = CreateWindowEx(
+	HWND hWnd = CreateWindowEx(
 		0,                              // Optional window styles.
 		CLASS_NAME,                     // Window class
-		L"Learn to Program Windows",    // Window text
+		L"",    // Window text
 		WS_OVERLAPPEDWINDOW,            // Window style
 
 		// Size and position
@@ -41,7 +56,7 @@ int WINAPI WinMain(
 		NULL        // Additional application data
 	);
 
-	if (hwnd == NULL)
+	if (hWnd == NULL)
 	{
 		MessageBox(
 			nullptr,
@@ -50,97 +65,78 @@ int WINAPI WinMain(
 			MB_ICONERROR);
 		return 0;
 	}
-	else
-	{
+
 		PWSTR localAppDataPath = NULL;
-
-		//HANDLE handle = ::LoadLibraryEx(L"WebView2Container.exe", NULL, LOAD_LIBRARY_AS_DATAFILE);
-		HRSRC resourceHandle = ::FindResource(NULL, MAKEINTRESOURCE(IDR_HTML1), MAKEINTRESOURCE(RT_HTML));
-		DWORD   size = ::SizeofResource(NULL, resourceHandle);
-		HGLOBAL dataHandle = ::LoadResource(NULL, resourceHandle);
-		// char* datac = nullptr;
-		//LPTSTR  data = (LPTSTR) LockResource(dataHandle);
-		// datac = (char*)LockResource(dataHandle);
-
-		LPTSTR  data = (LPTSTR)LockResource(dataHandle);
-
-		if (dataHandle == NULL) {
-			MessageBox(
-				nullptr,
-				L"NIX",
-				L"WebView2Runner",
-				MB_ICONERROR);
-		}
-		else {
-			//std::wstring datac(data, size);
-
-			if (data==NULL) {
-				MessageBox(
-					nullptr,
-					L"NIX2",
-					L"WebView2Runner",
-					MB_ICONERROR);
-			}
-			else {
-
-			MessageBox(
-				nullptr,
-				LoadHtml().c_str(),
-				L"titel1",
-				MB_ICONERROR);
-			}
-		}
 
 		if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, NULL, &localAppDataPath)))
 		{
-			std::wstring html = LoadStringAsWstr(hInstance, 102);
 			std::wstring path = std::wstring(localAppDataPath) + L"\\WebViewContainer";
 			CoTaskMemFree((LPVOID)localAppDataPath);
 
-			//SetWindowLongPtr(hwnd, GWLP_USERDATA, NULL);
+			//SetWindowLongPtr(hWnd, GWLP_USERDATA, NULL);
 
-			ShowWindow(hwnd, nCmdShow);
-			UpdateWindow(hwnd);
+			ShowWindow(hWnd, nCmdShow);
+			UpdateWindow(hWnd);
 
 			CreateCoreWebView2EnvironmentWithOptions(
 				nullptr,
 				&path[0],
 				nullptr,
 				Microsoft::WRL::Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>(
-					[hwnd, html, data](HRESULT result, ICoreWebView2Environment* env) -> HRESULT {
+					[hWnd](HRESULT result, ICoreWebView2Environment* env) -> HRESULT {
 						// Create a CoreWebView2Controller and get the associated CoreWebView2 whose parent is the main window hWnd
-						env->CreateCoreWebView2Controller(hwnd, Microsoft::WRL::Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>(
-							[hwnd, html, data](HRESULT result, ICoreWebView2Controller* controller) -> HRESULT {
+						env->CreateCoreWebView2Controller(hWnd, Microsoft::WRL::Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>(
+							[hWnd](HRESULT result, ICoreWebView2Controller* controller) -> HRESULT {
 								if (controller != nullptr) {
+									// https://stackoverflow.com/a/77772192
+									controller->AddRef();
 									webViewController = controller;
 									webViewController->get_CoreWebView2(&webViewWindow);
 								}
 
-								// Add a few settings for the webview
-								// The demo step is redundant since the values are the default settings
 								ICoreWebView2Settings* Settings;
 								webViewWindow->get_Settings(&Settings);
-								Settings->put_IsScriptEnabled(TRUE);
-								Settings->put_AreDefaultScriptDialogsEnabled(TRUE);
-								Settings->put_IsWebMessageEnabled(TRUE);
+								Settings->put_AreDefaultContextMenusEnabled(FALSE);
+#ifdef _DEBUG
+								Settings->put_AreDevToolsEnabled(TRUE);
+								Settings->put_IsStatusBarEnabled(TRUE);
+#else
+								Settings->put_IsStatusBarEnabled(FALSE);
+								Settings->put_AreDevToolsEnabled(FALSE);
+#endif
 
 								// Resize WebView to fit the bounds of the parent window
 								RECT bounds;
-								GetClientRect(hwnd, &bounds);
+								GetClientRect(hWnd, &bounds);
 								webViewController->put_Bounds(bounds);
 
-								// Schedule an async task to navigate to Bing
-							   // webViewWindow->Navigate(L"https://www.bing.com/");
-								webViewWindow->Navigate(L"res://WebView2Container.exe/html1.htm");
-								webViewWindow->NavigateToString(LoadHtml().c_str());
-								//webViewWindow->NavigateToString(&html[0]);//L"NIX");
+								EventRegistrationToken token;
 
-								// Step 4 - Navigation events
+								webViewWindow->add_DocumentTitleChanged(
+									Microsoft::WRL::Callback<ICoreWebView2DocumentTitleChangedEventHandler>(
+										[hWnd](ICoreWebView2* webview, IUnknown* args) -> HRESULT {
+											LPWSTR title;
+											webview->get_DocumentTitle(&title);
+											SetWindowTextW(hWnd, title);
+											return S_OK;
+										}).Get(), &token);
 
-								// Step 5 - Scripting
+								webViewWindow->add_WindowCloseRequested(
+									Microsoft::WRL::Callback<ICoreWebView2WindowCloseRequestedEventHandler>(
+										[hWnd](ICoreWebView2* webview, IUnknown* args) {
+											DestroyWindow(hWnd);
+											return S_OK;
+										}).Get(), &token);
 
-								// Step 6 - Communication between host and web content
+								std::wstring js = LoadHtmlFromResource(IDR_HTML2);
 
+								webViewWindow->AddScriptToExecuteOnDocumentCreated(&js[0],
+									Microsoft::WRL::Callback<ICoreWebView2AddScriptToExecuteOnDocumentCreatedCompletedHandler>(
+										[](HRESULT error, PCWSTR id)->HRESULT {
+											std::wstring html = LoadHtmlFromResource(IDR_HTML1);
+											webViewWindow->NavigateToString(&html[0]);
+											return S_OK; 
+										}).Get());
 								return S_OK;
 							}).Get());
 						return S_OK;
@@ -160,45 +156,41 @@ int WINAPI WinMain(
 		}
 
 		return 0;
-	}
 }
 
-LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	switch (uMsg)
 	{
+	/*
+	case WM_CLOSE:
+		if (MessageBox(hWnd, L"Programm wirklich beenden?", L"Frage:", MB_OKCANCEL | MB_ICONQUESTION) == IDOK)
+		{
+			DestroyWindow(hWnd);
+		}
+		break;
+	*/
+	case WM_SIZE:
+		if (webViewController != nullptr) {
+			RECT bounds;
+			GetClientRect(hWnd, &bounds);
+			webViewController->put_Bounds(bounds);
+		};
+		break;
+
 	case WM_DESTROY:
 		PostQuitMessage(0);
 		break;
 
 	default:
-		return DefWindowProc(hwnd, uMsg, wParam, lParam);
+		return DefWindowProc(hWnd, uMsg, wParam, lParam);
 	}
 
 	return 0;
 }
 
-std::wstring LoadStringFromResource(HINSTANCE instance, UINT stringID)
-{
-	WCHAR* pBuf = nullptr;
-	int len = LoadStringW(
-		instance,
-		stringID,
-		reinterpret_cast<LPWSTR>(&pBuf),
-		0);
-
-	return std::wstring(pBuf, len);
-}
-
-std::wstring LoadStringAsWstr(HINSTANCE hInstance, UINT uID)
-{
-	PCWSTR pws = nullptr;
-	int cch = LoadStringW(hInstance, uID, reinterpret_cast<LPWSTR>(&pws), 0);
-	return std::wstring(pws, cch);
-}
-
-std::wstring LoadHtml() {
-	HRSRC resourceHandle = ::FindResource(NULL, MAKEINTRESOURCE(IDR_HTML1), MAKEINTRESOURCE(RT_HTML));
+std::wstring LoadHtmlFromResource(WORD resId) {
+	HRSRC resourceHandle = ::FindResource(NULL, MAKEINTRESOURCE(resId), MAKEINTRESOURCE(RT_HTML));
 	
 	if (resourceHandle==NULL) {
 		return L"nix 1";
@@ -210,7 +202,7 @@ std::wstring LoadHtml() {
 		return L"nix 2";
 	}
 
-	HGLOBAL dataHandle = ::LoadResource(NULL, resourceHandle);
+	HGLOBAL dataHandle = LoadResource(NULL, resourceHandle);
 
 	if (dataHandle == NULL) {
 		return L"nix 3";
@@ -228,23 +220,6 @@ std::wstring LoadHtml() {
 		std::wstring wstr(count, 0);
 		MultiByteToWideChar(CP_UTF8, 0, data, size, &wstr[0], count);
 		return wstr;
-		return L"nix 5";
 	}
-	return L"nix 6";
-}
-
-std::string ConvertWideToUtf8(const std::wstring& wstr)
-{
-	int count = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), wstr.length(), NULL, 0, NULL, NULL);
-	std::string str(count, 0);
-	WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, &str[0], count, NULL, NULL);
-	return str;
-}
-
-std::wstring ConvertUtf8ToWide(const std::string& str)
-{
-	int count = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), str.length(), NULL, 0);
-	std::wstring wstr(count, 0);
-	MultiByteToWideChar(CP_UTF8, 0, str.c_str(), str.length(), &wstr[0], count);
-	return wstr;
+	return L"Error: ";
 }

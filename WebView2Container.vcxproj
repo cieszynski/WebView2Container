@@ -137,6 +137,9 @@
     <None Include="html1.htm">
       <DeploymentContent>true</DeploymentContent>
     </None>
+    <None Include="html2.htm">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
